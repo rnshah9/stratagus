@@ -1,0 +1,7 @@
+project: rnshah9/stratagus
+target: stratagus
+tests: 
+  - file://doc/graphics/farm.png
+
+cmds:
+  - cmd: /repo/tools/png2stratagus @@ out
