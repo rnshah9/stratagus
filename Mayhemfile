@@ -1,6 +1,6 @@
-project: rnshah9/stratagus
-target: stratagus
-tests: 
+project: stratagus
+target: png2stratagus
+testsuite: 
   - file://doc/graphics/farm.png
 
 cmds:
