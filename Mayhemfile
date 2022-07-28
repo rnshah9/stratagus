@@ -4,4 +4,4 @@ testsuite:
   - file://doc/graphics/farm.png
 
 cmds:
-  - cmd: /repo/tools/png2stratagus @@ out
+  - cmd: /png2stratagus @@ out
