@@ -174,7 +174,7 @@ public:
 	// minor programmatic editing features
 	void OverlayGraphic(CGraphic *other, bool mask = false);
 
-	inline bool IsLoaded() const { return Surface != NULL; }
+	inline bool IsLoaded(bool flipped = false) const { return Surface != NULL && (!flipped || SurfaceFlip != NULL); }
 
 	//guichan
 	virtual void *_getData() const { return Surface; }
@@ -248,9 +248,11 @@ public:
 
 	//guichan
 	virtual void *_getData() const;
-	virtual int getWidth() const { return surface->h; }
-	virtual int getHeight() const { return surface->w; }
-	virtual bool isDirty() const { return is_dirty; }
+	virtual int getWidth() const { return surface->w; }
+	virtual int getHeight() const { return surface->h; }
+	virtual bool isDirty() const { return true; }
+
+	static uint32_t MaxFPS;
 
 	mutable bool is_dirty;
 	std::string name;
@@ -268,7 +270,7 @@ class Mng : public gcn::Image
 	Mng() {};
 	~Mng() {};
 public:
-	Mng *New(const std::string &name) { return NULL; }
+	static Mng *New(const std::string &name) { return NULL; }
 	static void Free(Mng *mng) {};
 	bool Load() { return false; };
 	void Reset() {};
@@ -279,6 +281,8 @@ public:
 	virtual int getWidth() const { return 0; };
 	virtual int getHeight() const { return 0; };
 	virtual bool isDirty() const { return false; };
+
+	static inline uint32_t MaxFPS = 15;
 };
 #endif
 

@@ -42,6 +42,11 @@
 #include "iocompat.h"
 
 /*----------------------------------------------------------------------------
+--  Variables
+----------------------------------------------------------------------------*/
+uint32_t Mng::MaxFPS = 15;
+
+/*----------------------------------------------------------------------------
 --  Functions
 ----------------------------------------------------------------------------*/
 
@@ -116,6 +121,7 @@ static mng_bool MNG_DECL my_processheader(mng_handle handle, mng_uint32 width,
 
 	mng->surface = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height,
 										8 * 3, Rmask, Gmask, Bmask, 0);
+	SDL_SetColorKey(mng->surface, 1, 0);
 	if (mng->surface == NULL) {
 		fprintf(stderr, "Out of memory");
 		exit(1);
@@ -154,7 +160,9 @@ static mng_uint32 MNG_DECL my_gettickcount(mng_handle)
 static mng_bool MNG_DECL my_settimer(mng_handle handle, mng_uint32 msecs)
 {
 	Mng *mng = (Mng *)mng_get_userdata(handle);
-	mng->ticks = GetTicks() + msecs;
+	unsigned long ticks = GetTicks();
+	uint32_t offset = std::max(static_cast<uint32_t>(msecs), static_cast<uint32_t>(1000 / mng->MaxFPS));
+	mng->ticks = std::max(ticks + offset, mng->ticks + offset);
 
 	return MNG_TRUE;
 }
@@ -198,7 +206,6 @@ Mng::~Mng()
 	delete[] buffer;
 }
 
-
 /**
 **  Display a MNG
 **
@@ -232,6 +239,10 @@ Mng *Mng::New(const std::string &name)
 
 void Mng::Free(Mng *mng)
 {
+	// XXX: Weird free bug that I don't understand, just skip it if already NULL
+	if ((intptr_t)mng < 40) {
+		return;
+	}
 	mng->refcnt--;
 	if (mng->refcnt == 0) {
 		MngCache.erase(mng->name);
@@ -246,6 +257,9 @@ void Mng::Free(Mng *mng)
 */
 bool Mng::Load()
 {
+	if (handle) {
+		return handle != MNG_NULL && surface && iteration != 0x7fffffff;
+	}
 	handle = mng_initialize(this, my_alloc, my_free, MNG_NULL);
 	if (handle == MNG_NULL) {
 		return false;
@@ -277,6 +291,9 @@ bool Mng::Load()
 */
 void Mng::Reset()
 {
+	if (!handle) {
+		return;
+	}
 	mng_display_reset(handle);
 	iteration = 0;
 	mng_display(handle);

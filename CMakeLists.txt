@@ -32,7 +32,7 @@
 # Stratagus major version
 set(STRATAGUS_MAJOR_VERSION 3)
 # Stratagus minor version (maximum 99)
-set(STRATAGUS_MINOR_VERSION 2)
+set(STRATAGUS_MINOR_VERSION 3)
 # Stratagus patch level (maximum 99)
 set(STRATAGUS_PATCH_LEVEL 1)
 # Stratagus patch level 2
@@ -876,6 +876,8 @@ endif()
 
 if(LINUX)
 	add_definitions(-DUSE_LINUX)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -ggdb")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ggdb")
 endif()
 
 if(BEOS)

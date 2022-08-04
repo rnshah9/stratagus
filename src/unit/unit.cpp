@@ -377,7 +377,7 @@ extern int ExtraDeathIndex(const char *death);
 */
 void CUnit::RefsIncrease()
 {
-	Assert(Refs && !Destroyed);
+	Assert(!Refs || (Refs && !Destroyed));
 	if (!SaveGameLoading) {
 		++Refs;
 	}
@@ -553,21 +553,26 @@ void CUnit::Release(bool final)
 	// removed, but fog of war calculations are still underway, where we want to
 	// read a BoolFlag; there are more instances of this...)
 	for (std::vector<COrder *>::iterator order = Orders.begin(); order != Orders.end(); ++order) {
-		delete *order;
+		COrder *orderToDelete = *order;
+		*order = NULL;
+		delete orderToDelete;
 	}
 	Orders.clear();
 
 	if (SavedOrder != NULL) {
-		delete SavedOrder;
+		COrder *order = SavedOrder;
 		SavedOrder = NULL;
+		delete order;
 	}
 	if (NewOrder != NULL) {
-		delete NewOrder;
+		COrder *order = NewOrder;
 		NewOrder = NULL;
+		delete order;
 	}
 	if (CriticalOrder != NULL) {
-		delete CriticalOrder;
+		COrder *order = CriticalOrder;
 		CriticalOrder = NULL;
+		delete order;
 	}
 
 	// Remove the unit from the global units table.
@@ -1088,11 +1093,17 @@ void CUnit::AddInContainer(CUnit &host)
 {
 	Assert(Container == NULL);
 	Container = &host;
+	if (!Type) {
+		// if we're loading a game, the Type may not have been initialized
+		// yet. so we ignore this and the unit gets added later when it is
+		// loaded via CclUnit
+		return;
+	}
 	if (host.InsideCount == 0) {
 		NextContained = PrevContained = this;
 		host.UnitInside = this;
 	} else {
-		// keep sorted by size
+		// keep sorted by size.
 		int mySize = Type->BoardSize;
 		NextContained = host.UnitInside;
 		bool becomeFirst = true;

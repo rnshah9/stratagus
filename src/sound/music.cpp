@@ -67,7 +67,7 @@ static void MusicFinishedCallback()
 	SDL_zero(event);
 	event.type = SDL_SOUND_FINISHED;
 	event.user.code = 1;
-	event.user.data1 = CheckMusicFinished;
+	event.user.data1 = (void*) CheckMusicFinished;
 	SDL_PeepEvents(&event, 1, SDL_ADDEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
 }
 

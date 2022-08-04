@@ -278,7 +278,7 @@ static void ChannelFinished(int channel)
 		SDL_zero(event);
 		event.type = SDL_SOUND_FINISHED;
 		event.user.code = channel;
-		event.user.data1 = Channels[channel].FinishedCallback;
+		event.user.data1 = (void*) Channels[channel].FinishedCallback;
 		SDL_PeepEvents(&event, 1, SDL_ADDEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
 	}
 	delete Channels[channel].Unit;
@@ -380,18 +380,6 @@ static Mix_Music *LoadMusic(const char *name)
 	return currentMusic;
 }
 
-static Mix_Chunk *LoadSample(const char *name)
-{
-#ifdef DYNAMIC_LOAD
-	Mix_Chunk *r = (Mix_Chunk *)calloc(sizeof(Mix_Chunk), 1);
-	r->allocated = 0xcafebeef;
-	r->abuf = (Uint8 *)(strdup(name));
-	return r;
-#else
-	return ForceLoadSample(name);
-#endif
-}
-
 static Mix_Chunk *ForceLoadSample(const char *name)
 {
 	Mix_Chunk *r = Mix_LoadWAV(name);
@@ -405,6 +393,18 @@ static Mix_Chunk *ForceLoadSample(const char *name)
 		return NULL;
 	}
 	return Mix_LoadWAV_RW(f->as_SDL_RWops(), 1);
+}
+
+static Mix_Chunk *LoadSample(const char *name)
+{
+#ifdef DYNAMIC_LOAD
+	Mix_Chunk *r = (Mix_Chunk *)calloc(sizeof(Mix_Chunk), 1);
+	r->allocated = 0xcafebeef;
+	r->abuf = (Uint8 *)(strdup(name));
+	return r;
+#else
+	return ForceLoadSample(name);
+#endif
 }
 
 /**
@@ -473,8 +473,12 @@ static int PlaySample(Mix_Chunk *sample, Origin *origin, void (*callback)(int ch
 	if (sample->allocated == 0xcafebeef) {
 		char *name = (char*)(sample->abuf);
 		Mix_Chunk *loadedSample = ForceLoadSample(name);
-		memcpy(sample, loadedSample, sizeof(Mix_Chunk));
-		free(name);
+		if (loadedSample) {
+			memcpy(sample, loadedSample, sizeof(Mix_Chunk));
+			free(name);
+		} else {
+			return -1;
+		}
 	}
 #endif
 	int channel = -1;
@@ -639,7 +643,7 @@ bool IsMusicEnabled()
 */
 bool IsMusicPlaying()
 {
-	return Mix_PlayingMusic();
+	return Mix_PlayingMusic() || External_IsPlaying();
 }
 
 /*----------------------------------------------------------------------------

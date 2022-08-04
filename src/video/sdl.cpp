@@ -387,17 +387,22 @@ void InitVideoSdl()
 	}
 	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+	int rendererFlags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE;
+	if (!Parameters::Instance.benchmark) {
+		rendererFlags |= SDL_RENDERER_PRESENTVSYNC;
+	}
 	if (!TheRenderer) {
-		TheRenderer = SDL_CreateRenderer(TheWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+		TheRenderer = SDL_CreateRenderer(TheWindow, -1, rendererFlags);
 	}
 	SDL_RendererInfo rendererInfo;
-	SDL_GetRendererInfo(TheRenderer, &rendererInfo);
-	printf("[Renderer] %s\n", rendererInfo.name);
-	if (strlen(rendererInfo.name) == 0) {
-		dummyRenderer = true;
-	}
-	if(!strncmp(rendererInfo.name, "opengl", 6)) {
-		LoadShaderExtensions();
+	if (!SDL_GetRendererInfo(TheRenderer, &rendererInfo)) {
+		printf("[Renderer] %s\n", rendererInfo.name);
+		if (strlen(rendererInfo.name) == 0) {
+			dummyRenderer = true;
+		}
+		if(!strncmp(rendererInfo.name, "opengl", 6)) {
+			LoadShaderExtensions();
+		}
 	}
 	SDL_SetRenderDrawColor(TheRenderer, 0, 0, 0, 255);
 	Video.ResizeScreen(Video.Width, Video.Height);
@@ -792,10 +797,45 @@ void WaitEventsOneFrame()
 static Uint32 LastTick = 0;
 static int RefreshRate = 0;
 
+static void RenderBenchmarkOverlay()
+{
+	if (!RefreshRate) {
+		int displayCount = SDL_GetNumVideoDisplays();
+		SDL_DisplayMode mode;
+		for (int i = 0; i < displayCount; i++) {
+			SDL_GetDesktopDisplayMode(0, &mode);
+			if (mode.refresh_rate > RefreshRate) {
+				RefreshRate = mode.refresh_rate;
+			}
+		}
+	}
+
+	// show a bar representing fps, where the entire bar is the max refresh rate of attached displays
+	Uint32 nextTick = SDL_GetTicks();
+	Uint32 frameTime = nextTick - LastTick;
+	int fps = std::min(RefreshRate, static_cast<int>(frameTime > 0 ? (1000.0 / frameTime) : 0));
+	LastTick = nextTick;
+
+	// draw the full bar
+	SDL_SetRenderDrawColor(TheRenderer, 255, 0, 0, 255);
+	SDL_Rect frame = { Video.Width - 10, 2, 8, RefreshRate };
+	SDL_RenderDrawRect(TheRenderer, &frame);
+
+	// draw the inner fps gage
+	SDL_SetRenderDrawColor(TheRenderer, 0, 255, 0, 255);
+	SDL_Rect bar = { Video.Width - 8, 2 + RefreshRate - fps, 4, fps };
+	SDL_RenderFillRect(TheRenderer, &bar);
+
+	SDL_SetRenderDrawColor(TheRenderer, 0, 0, 0, 255);
+}
+
 void RealizeVideoMemory()
 {
 	++FrameCounter;
 	if (dummyRenderer) {
+		return;
+	}
+	if (Preference.FrameSkip && (FrameCounter & Preference.FrameSkip)) {
 		return;
 	}
 	if (NumRects) {
@@ -808,34 +848,7 @@ void RealizeVideoMemory()
 			SDL_RenderCopy(TheRenderer, TheTexture, NULL, NULL);
 		}
 		if (Parameters::Instance.benchmark) {
-			if (!RefreshRate) {
-				int displayCount = SDL_GetNumVideoDisplays();
-				SDL_DisplayMode mode;
-				for (int i = 0; i < displayCount; i++) {
-					SDL_GetDesktopDisplayMode(0, &mode);
-					if (mode.refresh_rate > RefreshRate) {
-						RefreshRate = mode.refresh_rate;
-					}
-				}
-			}
-
-			// show a bar representing fps, where the entire bar is the max refresh rate of attached displays
-			Uint32 nextTick = SDL_GetTicks();
-			Uint32 frameTime = nextTick - LastTick;
-			int fps = std::min(RefreshRate, static_cast<int>(frameTime > 0 ? (1000.0 / frameTime) : 0));
-			LastTick = nextTick;
-
-			// draw the full bar
-			SDL_SetRenderDrawColor(TheRenderer, 255, 0, 0, 255);
-			SDL_Rect frame = { Video.Width - 10, 2, 8, RefreshRate };
-			SDL_RenderDrawRect(TheRenderer, &frame);
-
-			// draw the inner fps gage
-			SDL_SetRenderDrawColor(TheRenderer, 0, 255, 0, 255);
-			SDL_Rect bar = { Video.Width - 8, 2 + RefreshRate - fps, 4, fps };
-			SDL_RenderFillRect(TheRenderer, &bar);
-
-			SDL_SetRenderDrawColor(TheRenderer, 0, 0, 0, 255);
+			RenderBenchmarkOverlay();
 		}
 		SDL_RenderPresent(TheRenderer);
 		NumRects = 0;

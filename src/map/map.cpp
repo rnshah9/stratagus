@@ -318,14 +318,19 @@ void CMapInfo::Clear()
 	this->MapUID = 0;
 }
 
-CMap::CMap() : Fields(NULL), NoFogOfWar(false), TileGraphic(NULL)
+CMap::CMap() : Fields(NULL), NoFogOfWar(false), TileGraphic(NULL), Tileset(NULL)
 {
-	Tileset = new CTileset;
 }
 
 CMap::~CMap()
 {
 	delete Tileset;
+}
+
+void CMap::AllocateTileset()
+{
+	Assert(!Tileset);
+	Tileset = new CTileset();
 }
 
 /**
